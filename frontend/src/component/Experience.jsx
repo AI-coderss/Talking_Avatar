@@ -13,7 +13,7 @@ export const Experience = () => {
         <Suspense fallback={null}>
           <Environment background={false} files="/images/photo_studio_loft_hall_1k.hdr" />
           <Bg />
-          <Avatar avatar_url="/model.glb" />
+          <Avatar avatar_url="/model.glb"/>
         </Suspense>
       </Canvas>
     </>

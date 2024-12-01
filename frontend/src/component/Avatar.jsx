@@ -12,12 +12,16 @@ import useSpeechStore from './store/useSpeechStore';
 
 const host = 'http://127.0.0.1:5000';
 
-export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
+export default function Avatar({ avatar_url }) {
 
   let gltf = useGLTF(avatar_url);
   let morphTargetDictionaryBody = null;
   let morphTargetDictionaryLowerTeeth = null;
-  const [speak, setSpeak] = useState(false);
+
+  const [clips, setClips] = useState([]);
+  const [audioBase64, setAudioBase64] = useState(null);
+
+  const { audio, blendshapes, speak, setSpeak } = useSpeechStore();
 
   const [
     bodyTexture,
@@ -79,15 +83,10 @@ export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
 
 
   gltf.scene.traverse(node => {
-
-
     if (node.type === 'Mesh' || node.type === 'LineSegments' || node.type === 'SkinnedMesh') {
-
       node.castShadow = true;
       node.receiveShadow = true;
       node.frustumCulled = false;
-
-
       if (node.name.includes("Body")) {
 
         node.castShadow = true;
@@ -180,7 +179,6 @@ export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
 
   });
 
-
   const playBase64Audio = (base64Audio) => {
     try {
       // Ensure the string has the correct base64 prefix
@@ -205,25 +203,39 @@ export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
       const audioBlob = new Blob([arrayBuffer], { type: 'audio/mp3' }); // Use correct MIME type
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Play the audio
+      // Create an Audio element
       const audioElement = new Audio(audioUrl);
 
-      let newClips = [
-        createAnimation(blendshapes, morphTargetDictionaryBody, 'HG_Body'),
-        createAnimation(blendshapes, morphTargetDictionaryLowerTeeth, 'HG_TeethLower')];
+      // Use canplaythrough to wait until the audio is fully ready to play
+      audioElement.addEventListener('canplaythrough', () => {
+        console.log('Audio is ready to play.');
+        setSpeak(true); // Set speak to true
 
-      audioElement.play();
-      
-      setClips(newClips);
+        setTimeout(() => {
+          let newClips = [
+            createAnimation(blendshapes, morphTargetDictionaryBody, 'HG_Body'),
+            createAnimation(blendshapes, morphTargetDictionaryLowerTeeth, 'HG_TeethLower'),
+          ];
+
+          setClips(newClips);
+        }, 350);
+
+        audioElement.play().catch((err) => {
+          console.error('Error playing audio:', err);
+        });
+      });
+
+      // Set speak to false after audio ends
+      audioElement.addEventListener('ended', () => {
+        setSpeak(false); // Set speak to false
+      });
+
+      // Load the audio
+      audioElement.load();
     } catch (err) {
       console.error('Failed to play audio:', err);
-      console.error('Base64 string:', base64Audio);
     }
   };
-
-
-  const [clips, setClips] = useState([]);
-  const [audioBase64, setAudioBase64] = useState(null);
 
   useEffect(() => {
     if (audio) {
@@ -267,14 +279,11 @@ export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
     let blinkClip = createAnimation(blinkData, morphTargetDictionaryBody, 'HG_Body');
     let blinkAction = mixer.clipAction(blinkClip);
     blinkAction.play();
-
-
   }, []);
 
   // Play animation clips when available
   useEffect(() => {
-
-    if (playing === false)
+    if (speak === false)
       return;
 
     _.each(clips, clip => {
@@ -284,44 +293,22 @@ export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
 
     });
 
-  }, [clips, mixer, playing]);
-
-
+  }, [clips, mixer, audio]);
 
   useFrame((state, delta) => {
     mixer.update(delta);
   });
 
-  const { audio, blendshapes } = useSpeechStore();
   useEffect(() => {
-    console.log(blendshapes);
-    console.log(audio);
-    setSpeak(true);
-  }, [blendshapes, audio]);
-
-
-  useEffect(() => {
-    
-
+    console.log(speak);
     try {
       if (speak === false)
         return;
-
-      // console.log(filename);
-      
-      // filename = host + filename;
       setAudioBase64(audio);
-      // setAudioSource(filename);
-      setSpeak(false);
-
     } catch (err) {
       console.error(err);
-      setSpeak(false);
-
     }
-
-  }, [speak]);
-
+  }, [audio]);
 
   return (
     <group name="avatar">
@@ -329,4 +316,3 @@ export default function Avatar({ avatar_url, text, setAudioSource, playing }) {
     </group>
   );
 }
-  
