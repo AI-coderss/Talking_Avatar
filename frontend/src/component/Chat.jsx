@@ -12,10 +12,9 @@ const Chat = () => {
   const [isChatVisible, setIsChatVisible] = useState(false);
   const chatContentRef = useRef(null);
 
-  // Zustand store for speech-related state
-  const setSpeak = useSpeechStore((state) => state.setSpeak);
   const setAudio = useSpeechStore((state) => state.setAudio);
   const setBlendshapes = useSpeechStore((state) => state.setBlendshapes);
+  const { speak, setSpeak } = useSpeechStore();
 
   const scrollToBottom = () => {
     if (chatContentRef.current) {
@@ -33,7 +32,7 @@ const Chat = () => {
   const handleNewMessage = async (data) => {
     setIsChatVisible(true);
 
-    if (data.text && data.text.trim().length > 0) {
+    if (data.text && data.text.trim().length > 0 && speak === false) {
       setChats((prevChats) => [...prevChats, { msg: data.text, who: "me" }]);
       setLoading(true);
 
